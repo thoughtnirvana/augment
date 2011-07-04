@@ -10,6 +10,13 @@ def get_args_and_name(fn):
     """
     Returns `(args, name)` where `args` are names of positional
     arguments `fn` takes and `name` is `fn.__name__`
+
+    >>> def foo(a, b, c=2, *args, **kwargs):
+    ...     pass
+    ...
+    >>> get_args_and_name(foo)
+    (('a', 'b', 'c'), 'foo')
+
     """
     code = fn.func_code
     allargs = code.co_varnames[:code.co_argcount]
@@ -29,10 +36,26 @@ def ensure_args(error_handler=None, **rules):
     """
     Ensures the value of `arg_name` satisfies `constraint`
     where `rules` is a collection of `arg_name=constraint`.
+
+    >>> @ensure_args(a=lambda x: x > 10,
+    ...              b=r'^-?\d+(\.\d+)$',
+    ...              c=lambda x: x)
+    ... def foo(a, b, **kwargs):
+    ...     pass
+    ...
+    >>> foo(11, '12', c=4)
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. 'b = 12' violates constraint.
+
+    >>> foo(11, '12.2', c=4)
+    >>> foo(9, '12.2', c=4)
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. 'a = 9' violates constraint.
     """
     def decorator(fn):
-        if hasattr(fn, 'wrapped'):
-            fn = fn.wrapped
+        fn = getattr(fn, '__wrapped__', fn)
         allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -49,7 +72,7 @@ def ensure_args(error_handler=None, **rules):
                 _propogate_error(''.join(errors))
             else:
                 return fn(*args, **kwargs)
-        wrapper.wrapped = fn
+        wrapper.__wrapped__ = fn
         return wrapper
     return decorator
 
@@ -67,10 +90,11 @@ def check_args(rules, pargs, args, kwargs):
         elif arg_name in pargs:
             arg_val = args[pargs.index(arg_name)]
         # `constraint` can either be a regex or a callable.
+        validator = constraint
         if not callable(constraint):
-            constraint = lambda val: re.match(constraint, val)
+            validator = lambda val: re.match(constraint, val)
         if arg_val:
-            results.append((arg_name, arg_val, constraint(arg_val)))
+            results.append((arg_name, arg_val, validator(arg_val)))
     return results
 
 def ensure_one_of(exclusive=False, **rules):
@@ -78,10 +102,35 @@ def ensure_one_of(exclusive=False, **rules):
     `rules` is a dictionary of `arg_name=1` pairs.
     Ensures at least(or at most depending on `exclusive)` one of `arg_name`
     is passed and not null.
+
+    >>> foo(9, 9)
+    >>> @ensure_one_of(a=lambda x: x > 10, b=lambda x: x < 10)
+    ... def foo(a, b):
+    ...     pass
+    ...
+    >>> foo(9, 11)
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. One of '['a', 'b']' must validate.
+
+    >>> @ensure_one_of(exclusive=True, a=lambda x: x > 10, b=lambda x: x < 10)
+    ... def foo(a, b):
+    ...     pass
+    ...
+    >>> foo(9, 11)
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. One of '['a', 'b']' must validate.
+
+    >>> foo(9, 9)
+    >>> foo(11, 11)
+    >>> foo(11, 9)
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
     """
     def decorator(fn):
-        if hasattr(fn, 'wrapped'):
-            fn = fn.wrapped
+        fn = getattr(fn, '__wrapped__', fn)
         allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -93,12 +142,12 @@ def ensure_one_of(exclusive=False, **rules):
             if valid_count < 1:
                 error_msg = "One of '%s' must validate." % rules.keys()
                 _propogate_error(fn_info + error_msg)
-            elif valid_count > 2 and exclusive:
+            elif valid_count > 1 and exclusive:
                 error_msg = "Only one of '%s' must validate." % rules.keys()
                 _propogate_error(fn_info + error_msg)
             else:
                 return fn(*args, **kwargs)
-        wrapper.wrapped = fn
+        wrapper.__wrapped__ = fn
         return wrapper
     return decorator
 
@@ -106,10 +155,16 @@ def transform_args(**rules):
     """
     Transform the value of `arg_name`
     where `rules` is a collection of `arg_name=transformation`.
+
+    >>> @transform_args(a=lambda x: x*x)
+    ... def foo(a):
+    ...     print a
+    ...
+    >>> foo(2)
+    4
     """
     def decorator(fn):
-        if hasattr(fn, 'wrapped'):
-            fn = fn.wrapped
+        fn = getattr(fn, '__wrapped__', fn)
         allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -123,7 +178,7 @@ def transform_args(**rules):
                 elif arg_name in pargs:
                     args[pargs.index(arg_name)] = res
                 return fn(*args, **kwargs)
-        wrapper.wrapped = fn
+        wrapper.__wrapped__ = fn
         return wrapper
     return decorator
 
@@ -157,6 +212,29 @@ around = lambda aux_fn: _surround(aux_fn, around=True)
 def delegate_to(target, *attribs):
     """
     Delegates `attribs` access to `target` for given `cls`.
+
+    >>> class Foo:
+    ...     def __init__(self):
+    ...         self.a = 10
+    ...         self.b = 20
+    ...         self.c = 30
+    ...
+    >>> @delegate_to('foo_delegate', 'a', 'b')
+    ... class Bar:
+    ...     def __init__(self):
+    ...         self.foo_delegate = Foo()
+    ...
+    >>> b = Bar()
+    >>> b.a
+    10
+    >>> b.b
+    20
+    >>> b.c
+    ------------------------------------------------------------
+    Traceback (most recent call last):
+    File "<ipython console>", line 1, in <module>
+    File "augment.py", line 204, in __getattr__
+    AttributeError: No such attribute: c
     """
     def decorator(cls):
         class Wrapper:
