@@ -69,7 +69,7 @@ def ensure_args(error_handler=None, **rules):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
-            results = check_args(rules, pargs, args, kwargs)
+            results = _check_args(rules, pargs, args, kwargs)
             errors = []
             for arg_name, arg_val, valid in results:
                 if not valid:
@@ -85,7 +85,7 @@ def ensure_args(error_handler=None, **rules):
         return wrapper
     return decorator
 
-def check_args(rules, pargs, args, kwargs):
+def _check_args(rules, pargs, args, kwargs):
     """
     Checks that `arg_val` satisfies `constraint` where `rules` is a
     dicionary of `arg_name=constraint` and `arg_val` is in `kwargs` or `args`
@@ -141,7 +141,7 @@ def ensure_one_of(exclusive=False, **rules):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
-            results = check_args(rules, pargs, args, kwargs)
+            results = _check_args(rules, pargs, args, kwargs)
             valid_count = len([valid for arg_name, arg_val, valid in results
                                 if valid])
             fn_info = "Errors in '%s'. " % fn_name
@@ -176,7 +176,7 @@ def transform_args(**rules):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
-            results = check_args(rules, pargs, args, kwargs)
+            results = _check_args(rules, pargs, args, kwargs)
             errors = []
             args = list(args)
             for arg_name, arg_val, res in results:
