@@ -38,21 +38,28 @@ def ensure_args(error_handler=None, **rules):
     where `rules` is a collection of `arg_name=constraint`.
 
     >>> @ensure_args(a=lambda x: x > 10,
-    ...              b=r'^-?\d+(\.\d+)$',
-    ...              c=lambda x: x)
+    ...              b=r'^-?\d+(\.\d+)?$',
+    ...              c=lambda x: x < 10)
     ... def foo(a, b, **kwargs):
     ...     pass
     ...
-    >>> foo(11, '12', c=4)
-    Traceback (most recent call last):
-        ...
-    TypeError: Errors in 'foo'. 'b = 12' violates constraint.
-
-    >>> foo(11, '12.2', c=4)
-    >>> foo(9, '12.2', c=4)
+    >>> foo(9, '12') #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
     TypeError: Errors in 'foo'. 'a = 9' violates constraint.
+    >>> foo(11, '12')
+    >>> foo(11, '12', 11) #doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+        ...
+    TypeError: foo() takes exactly 2 arguments (3 given)
+    >>> foo(11, 'ab', 11) #doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. 'b = ab' violates constraint.
+    >>> foo(11, 'ab') #doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+        ...
+    TypeError: Errors in 'foo'. 'b = ab' violates constraint.
     """
     def decorator(fn):
         fn = getattr(fn, '__wrapped__', fn)
@@ -103,28 +110,26 @@ def ensure_one_of(exclusive=False, **rules):
     Ensures at least(or at most depending on `exclusive)` one of `arg_name`
     is passed and not null.
 
-    >>> foo(9, 9)
     >>> @ensure_one_of(a=lambda x: x > 10, b=lambda x: x < 10)
     ... def foo(a, b):
     ...     pass
     ...
-    >>> foo(9, 11)
+    >>> foo(9, 9)
+    >>> foo(9, 11) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
     TypeError: Errors in 'foo'. One of '['a', 'b']' must validate.
-
     >>> @ensure_one_of(exclusive=True, a=lambda x: x > 10, b=lambda x: x < 10)
     ... def foo(a, b):
     ...     pass
     ...
-    >>> foo(9, 11)
+    >>> foo(9, 11) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
     TypeError: Errors in 'foo'. One of '['a', 'b']' must validate.
-
     >>> foo(9, 9)
     >>> foo(11, 11)
-    >>> foo(11, 9)
+    >>> foo(11, 9) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
     TypeError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
@@ -229,11 +234,9 @@ def delegate_to(target, *attribs):
     10
     >>> b.b
     20
-    >>> b.c
-    ------------------------------------------------------------
+    >>> b.c #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
-    File "<ipython console>", line 1, in <module>
-    File "augment.py", line 204, in __getattr__
+        ...
     AttributeError: No such attribute: c
     """
     def decorator(cls):
@@ -248,3 +251,7 @@ def delegate_to(target, *attribs):
                 raise AttributeError("No such attribute: %s" % attr_name)
         return Wrapper
     return decorator
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
