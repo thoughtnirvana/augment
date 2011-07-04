@@ -14,7 +14,7 @@ def _get_args_and_name(fn):
     >>> def foo(a, b, c=2, *args, **kwargs):
     ...     pass
     ...
-    >>> get_args_and_name(foo)
+    >>> _get_args_and_name(foo)
     (('a', 'b', 'c'), 'foo')
 
     """
