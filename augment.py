@@ -210,9 +210,67 @@ def _surround(aux_fn, around=False, before=False, after=False):
         return wrapper
     return decorator
 
-enter = lambda aux_fn: _surround(aux_fn, before=True)
-leave = lambda aux_fn: _surround(aux_fn, after=True)
-around = lambda aux_fn: _surround(aux_fn, around=True)
+def enter(aux_fn):
+    """
+    Decorator for installing a function hook which runs before a given
+    function.
+
+    >>> def login(a): print "Logging in. Received param %s" % a
+    ...
+    >>> @enter(login)
+    ... def home(a): print "home"
+    ...
+    >>> home(5)
+    Logging in. Received param 5
+    home
+    """
+    return _surround(aux_fn, before=True)
+
+def leave(aux_fn):
+    """
+    Decorator for installing a function hook which runs after a given
+    function.
+
+    >>> def logout(a): print "Logging out. Received param %s" % a
+    ...
+    >>> @leave(logout)
+    ... def home(a): print "home"
+    ...
+    >>> home(5)
+    home
+    Logging out. Received param 5
+    """
+    return _surround(aux_fn, after=True)
+
+def around(aux_fn):
+    """
+    Decorator for installing a function hook which runs before and after
+    a given function.
+
+    >>> def login(a): print "Logging in. Received param %s" % a
+    ...
+    >>> def logout(a): print "Logging out. Received param %s" % a
+    ...
+    >>> @leave(logout)
+    ... @enter(login)
+    ... def home(a): print "home"
+    ...
+    >>> home(5)
+    Logging in. Received param 5
+    home
+    Logging out. Received param 5
+
+    >>> def trace(a): print "Tracing home"
+    ...
+    >>> @around(trace)
+    ... def home(a): print "home"
+    ...
+    >>> home(5)
+    Tracing home
+    home
+    Tracing home
+    """
+    return _surround(aux_fn, around=True)
 
 def delegate_to(target, *attribs):
     """

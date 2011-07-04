@@ -50,17 +50,18 @@ The syntax below should be self explanatory. It can be applied both to bound and
 Basic function hooks to run on entering, leaving or both ways.
 
 
-    def login():
+    def login(root):
         print "Logging in."
 
-    def logout():
+    def logout(root):
         print "Logging out"
 
     # `login` will run before entering `home`.
     # `logout` will run after exiting from `home`.
+    # `root` param passed to `home` will be passed to `login`, `logout`.
     @enter(login)
     @leave(logout)
-    def home():
+    def home(root):
         print "Home page."
 
 
@@ -72,6 +73,11 @@ Basic function hooks to run on entering, leaving or both ways.
     @around(tracer)
     def inbox():
         print "Inbox"
+
+Please note that the hooks(`login` and `logout`) above are passed the arguments passed to the wrapped method(`home`).
+
+Method hooks should be accepting the same arguments as wrapped method.
+
 
 They work the same on bound functions.
 
