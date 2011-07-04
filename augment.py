@@ -101,7 +101,7 @@ def _check_args(rules, pargs, args, kwargs):
         # `constraint` can either be a regex or a callable.
         validator = constraint
         if not callable(constraint):
-            validator = lambda val: re.match(constraint, val)
+            validator = lambda val: re.match(constraint, str(val))
         if arg_val:
             results.append((arg_name, arg_val, validator(arg_val)))
     return results
