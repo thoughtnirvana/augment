@@ -6,7 +6,7 @@ import re, sys
 from inspect import getouterframes, currentframe
 from functools import wraps
 
-def get_args_and_name(fn):
+def _get_args_and_name(fn):
     """
     Returns `(args, name)` where `args` are names of positional
     arguments `fn` takes and `name` is `fn.__name__`
@@ -65,7 +65,7 @@ def ensure_args(error_handler=None, **rules):
     TypeError: Errors in 'foo'. 'b = ab' violates constraint.
     """
     def decorator(fn):
-        allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = _get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -137,7 +137,7 @@ def ensure_one_of(exclusive=False, **rules):
     TypeError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
     """
     def decorator(fn):
-        allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = _get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -172,7 +172,7 @@ def transform_args(**rules):
     4
     """
     def decorator(fn):
-        allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = _get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
