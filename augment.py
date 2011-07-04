@@ -62,8 +62,10 @@ def ensure_args(error_handler=None, **rules):
     TypeError: Errors in 'foo'. 'b = ab' violates constraint.
     """
     def decorator(fn):
-        fn = getattr(fn, '__wrapped__', fn)
-        allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = getattr(fn, '__allargs__', None), \
+                getattr(fn, '__fnname__', None)
+        if not allargs:
+            allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -79,7 +81,7 @@ def ensure_args(error_handler=None, **rules):
                 _propogate_error(''.join(errors))
             else:
                 return fn(*args, **kwargs)
-        wrapper.__wrapped__ = fn
+        wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
         return wrapper
     return decorator
 
@@ -135,8 +137,10 @@ def ensure_one_of(exclusive=False, **rules):
     TypeError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
     """
     def decorator(fn):
-        fn = getattr(fn, '__wrapped__', fn)
-        allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = getattr(fn, '__allargs__', None), \
+                getattr(fn, '__fnname__', None)
+        if not allargs:
+            allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -152,7 +156,7 @@ def ensure_one_of(exclusive=False, **rules):
                 _propogate_error(fn_info + error_msg)
             else:
                 return fn(*args, **kwargs)
-        wrapper.__wrapped__ = fn
+        wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
         return wrapper
     return decorator
 
@@ -169,8 +173,10 @@ def transform_args(**rules):
     4
     """
     def decorator(fn):
-        fn = getattr(fn, '__wrapped__', fn)
-        allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = getattr(fn, '__allargs__', None), \
+                getattr(fn, '__fnname__', None)
+        if not allargs:
+            allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -183,7 +189,7 @@ def transform_args(**rules):
                 elif arg_name in pargs:
                     args[pargs.index(arg_name)] = res
                 return fn(*args, **kwargs)
-        wrapper.__wrapped__ = fn
+        wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
         return wrapper
     return decorator
 
