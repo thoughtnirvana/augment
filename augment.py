@@ -18,9 +18,12 @@ def get_args_and_name(fn):
     (('a', 'b', 'c'), 'foo')
 
     """
-    code = fn.func_code
-    allargs = code.co_varnames[:code.co_argcount]
-    fn_name = fn.__name__
+    allargs, fn_name = getattr(fn, '__allargs__', None), \
+            getattr(fn, '__fnname__', None)
+    if not allargs:
+        code = fn.func_code
+        allargs = code.co_varnames[:code.co_argcount]
+        fn_name = fn.__name__
     return allargs, fn_name
 
 def _propogate_error(errors, handler=None, exception_type=TypeError):
@@ -62,10 +65,7 @@ def ensure_args(error_handler=None, **rules):
     TypeError: Errors in 'foo'. 'b = ab' violates constraint.
     """
     def decorator(fn):
-        allargs, fn_name = getattr(fn, '__allargs__', None), \
-                getattr(fn, '__fnname__', None)
-        if not allargs:
-            allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -73,8 +73,8 @@ def ensure_args(error_handler=None, **rules):
             errors = []
             for arg_name, arg_val, valid in results:
                 if not valid:
-                    errors.append("'%s = %s' violates constraint. "
-                                  % (arg_name, arg_val))
+                    errors.append("'%s = %s' violates constraint %s. "
+                                  % (arg_name, arg_val, rules[arg_name]))
             if errors:
                 fn_info = "Errors in '%s'. " % fn_name
                 errors.insert(0, fn_info)
@@ -137,10 +137,7 @@ def ensure_one_of(exclusive=False, **rules):
     TypeError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
     """
     def decorator(fn):
-        allargs, fn_name = getattr(fn, '__allargs__', None), \
-                getattr(fn, '__fnname__', None)
-        if not allargs:
-            allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
@@ -149,10 +146,12 @@ def ensure_one_of(exclusive=False, **rules):
                                 if valid])
             fn_info = "Errors in '%s'. " % fn_name
             if valid_count < 1:
-                error_msg = "One of '%s' must validate." % rules.keys()
+                error_msg = "One of '%s' must validate. Constraints: %s" % \
+                        (rules.keys(), rules)
                 _propogate_error(fn_info + error_msg)
             elif valid_count > 1 and exclusive:
-                error_msg = "Only one of '%s' must validate." % rules.keys()
+                error_msg = "Only one of '%s' must validate. Constraints: %s" % \
+                        (rules.keys(), rules)
                 _propogate_error(fn_info + error_msg)
             else:
                 return fn(*args, **kwargs)
@@ -173,10 +172,7 @@ def transform_args(**rules):
     4
     """
     def decorator(fn):
-        allargs, fn_name = getattr(fn, '__allargs__', None), \
-                getattr(fn, '__fnname__', None)
-        if not allargs:
-            allargs, fn_name = get_args_and_name(fn)
+        allargs, fn_name = get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
