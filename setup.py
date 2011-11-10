@@ -1,4 +1,4 @@
-'''
+"""
 Augment
 -------
 
@@ -132,7 +132,7 @@ Dynamic delgation.
     # This will throw an AttributeError.
     print b.c
 
-'''
+"""
 
 from setuptools import setup
 setup(name='Augment',
