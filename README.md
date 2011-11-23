@@ -37,9 +37,9 @@ The syntax below should be self explanatory. It can be applied both to bound and
         pass
 
     # Bundling multiple constraints.
-    # Contracts run in inside out order 
-    # i.e the one right above function will run first.
-    # In this case, `@ensure_args...` will be the first to run.
+    # Contracts run in top down order 
+    # i.e the top most will run first. 
+    # In this case, `@transform_args...` will be the first to run.
     @transform_args(a=lambda x: x * x)
     @ensure_one_of(c=lambda x: x, d=lambda x: x)
     @ensure_args(a=lambda x: x > 10,
