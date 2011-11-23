@@ -195,6 +195,7 @@ def _surround(aux_fn, around=False, before=False, after=False):
     Runs `aux_fn` before/after/around `fn`.
     """
     def decorator(fn):
+        allargs, fn_name = _get_args_and_name(fn)
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if around:
@@ -207,6 +208,7 @@ def _surround(aux_fn, around=False, before=False, after=False):
             elif after:
                 fn(*args, **kwargs)
                 return aux_fn(*args, **kwargs)
+        wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
         return wrapper
     return decorator
 
