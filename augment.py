@@ -77,7 +77,7 @@ def ensure_args(error_handler=None, **rules):
             if errors:
                 fn_info = "Errors in '%s'. " % fn_name
                 errors.insert(0, fn_info)
-                _propogate_error(''.join(errors))
+                _propogate_error(''.join(errors), error_handler)
             else:
                 return fn(*args, **kwargs)
         wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
@@ -105,7 +105,7 @@ def _check_args(rules, pargs, args, kwargs):
             results.append((arg_name, arg_val, validator(arg_val)))
     return results
 
-def ensure_one_of(exclusive=False, **rules):
+def ensure_one_of(error_handler=None, exclusive=False, **rules):
     """
     `rules` is a dictionary of `arg_name=1` pairs.
     Ensures at least(or at most depending on `exclusive)` one of `arg_name`
@@ -147,11 +147,11 @@ def ensure_one_of(exclusive=False, **rules):
             if valid_count < 1:
                 error_msg = "One of '%s' must validate. Constraints: %s" % \
                         (rules.keys(), rules)
-                _propogate_error(fn_info + error_msg)
+                _propogate_error(fn_info + error_msg, error_handler)
             elif valid_count > 1 and exclusive:
                 error_msg = "Only one of '%s' must validate. Constraints: %s" % \
                         (rules.keys(), rules)
-                _propogate_error(fn_info + error_msg)
+                _propogate_error(fn_info + error_msg, error_handler)
             else:
                 return fn(*args, **kwargs)
         wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
