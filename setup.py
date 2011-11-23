@@ -136,7 +136,7 @@ Dynamic delgation.
 
 from setuptools import setup
 setup(name='Augment',
-      version='0.2',
+      version='0.3',
       description='Python decorators for contracts and augmenting OOP.',
       long_description=__doc__,
       author='Rahul Kumar',
