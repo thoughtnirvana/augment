@@ -2,8 +2,7 @@
 General purpose decorators and other utilities for contract based programming and oop
 augmentation.
 """
-import re, sys
-from inspect import getouterframes, currentframe
+import re
 from functools import wraps
 
 def _get_args_and_name(fn):
@@ -177,7 +176,6 @@ def transform_args(**rules):
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
             results = _check_args(rules, pargs, args, kwargs)
-            errors = []
             args = list(args)
             for arg_name, arg_val, res in results:
                 if arg_name in kwargs:
