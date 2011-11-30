@@ -13,9 +13,9 @@ The syntax below should be self explanatory. It can be applied both to bound and
 
     # Constraints on passed arguments.
     # Constraints can be callables or regular expressions.
-    # Throws a `TypeError` by default if contraints are violated.
+    # Throws a `AugmentError` by default if contraints are violated.
     # Optionally, an error handler can be specified which receives the errors.
-    @ensure_args(a=lambda x: x > 10,
+    @ensure_args(a=(lambda x: x > 10, 'must be greater than 10'),
                  b=r'^?-\d+(\.\d+)$',
                  c=lambda x: x < 5) # `c` will be picked from `kwargs`.
     def foo(a, b, **kwargs):
