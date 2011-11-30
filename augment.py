@@ -4,6 +4,20 @@ augmentation.
 """
 import re
 from functools import wraps
+from collections import defaultdict
+
+class AugmentError(ValueError):
+    """
+    Default exception raised when a contraint is voilated.
+    """
+    def __init__(self, errors):
+        self.errors = errors
+
+    def __str__(self):
+        """
+        Dumps the `self.errors` dictionary.
+        """
+        return repr(self.errors)
 
 def _get_args_and_name(fn):
     """
@@ -25,7 +39,7 @@ def _get_args_and_name(fn):
         fn_name = fn.__name__
     return allargs, fn_name
 
-def _propogate_error(errors, handler=None, exception_type=ValueError):
+def _propogate_error(errors, handler=None, exception_type=AugmentError):
     """
     Passes the errors to the handler or raises an exception.
     """
@@ -37,31 +51,8 @@ def _propogate_error(errors, handler=None, exception_type=ValueError):
 def ensure_args(error_handler=None, **rules):
     """
     Ensures the value of `arg_name` satisfies `constraint`
-    where `rules` is a collection of `arg_name=constraint`.
-
-    >>> @ensure_args(a=lambda x: x > 10,
-    ...              b=r'^-?\d+(\.\d+)?$',
-    ...              c=lambda x: x < 10)
-    ... def foo(a, b, **kwargs):
-    ...     pass
-    ...
-    >>> foo(9, '12') #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    ValueError: Errors in 'foo'. 'a = 9' violates constraint.
-    >>> foo(11, '12')
-    >>> foo(11, '12', 11) #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    TypeError: foo() takes exactly 2 arguments (3 given)
-    >>> foo(11, 'ab', 11) #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    ValueError: Errors in 'foo'. 'b = ab' violates constraint.
-    >>> foo(11, 'ab') #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    ValueError: Errors in 'foo'. 'b = ab' violates constraint.
+    where `rules` is a collection of `arg_name=constraint` or `arg_name=(constraint, message)`
+    where `message` is the voilation message.
     """
     def decorator(fn):
         allargs, fn_name = _get_args_and_name(fn)
@@ -69,20 +60,34 @@ def ensure_args(error_handler=None, **rules):
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
             results = _check_args(rules, pargs, args, kwargs)
-            errors = []
-            for arg_name, arg_val, valid in results:
-                if not valid:
-                    errors.append("'%s = %s' violates constraint %s. "
-                                  % (arg_name, arg_val, rules[arg_name]))
+            errors = _construct_errors(results, rules)
             if errors:
-                fn_info = "Errors in '%s'. " % fn_name
-                errors.insert(0, fn_info)
-                _propogate_error(''.join(errors), error_handler)
+                plural = 'errors' if len(errors) > 1 else 'error'
+                fn_info = '%s: %s %s.' % (fn_name, len(errors), plural)
+                errors['base'].append(fn_info)
+                _propogate_error(errors, error_handler)
             else:
                 return fn(*args, **kwargs)
         wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
         return wrapper
     return decorator
+
+def _construct_errors(results, rules):
+    """
+    Constructs errors dictionary from the returned results.
+    """
+    errors = defaultdict(list)
+    for res in results:
+        if len(res) == 4:
+            arg_name, arg_val, valid, message = res
+        else:
+            arg_name, arg_val, valid = res
+        if not valid:
+            if not message:
+                # No user supplied message. Construct a generic message.
+                message = '"%s" violates constraint "%s."' % (arg_val, rules[arg_name])
+            errors[arg_name].append(message)
+    return errors
 
 def _check_args(rules, pargs, args, kwargs):
     """
@@ -97,12 +102,22 @@ def _check_args(rules, pargs, args, kwargs):
             arg_val = kwargs[arg_name]
         elif arg_name in pargs:
             arg_val = args[pargs.index(arg_name)]
+        message = None
+        if isinstance(constraint, list) or isinstance(constraint, tuple):
+            if len(constraint) == 2:
+                constraint, message = constraint
+            else:
+                raise ValueError('Constraints can either be "(constraint, message)" or "constraint"'
+                                 '"%s" is in inproper format' % constraint)
         # `constraint` can either be a regex or a callable.
         validator = constraint
         if not callable(constraint):
             validator = lambda val: re.match(constraint, str(val))
         if arg_val:
-            results.append((arg_name, arg_val, validator(arg_val)))
+            if message:
+                results.append((arg_name, arg_val, validator(arg_val), message))
+            else:
+                results.append((arg_name, arg_val, validator(arg_val)))
     return results
 
 def ensure_one_of(error_handler=None, exclusive=False, **rules):
@@ -110,30 +125,6 @@ def ensure_one_of(error_handler=None, exclusive=False, **rules):
     `rules` is a dictionary of `arg_name=1` pairs.
     Ensures at least(or at most depending on `exclusive)` one of `arg_name`
     is passed and not null.
-
-    >>> @ensure_one_of(a=lambda x: x > 10, b=lambda x: x < 10)
-    ... def foo(a, b):
-    ...     pass
-    ...
-    >>> foo(9, 9)
-    >>> foo(9, 11) #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    ValueError: Errors in 'foo'. One of '['a', 'b']' must validate.
-    >>> @ensure_one_of(exclusive=True, a=lambda x: x > 10, b=lambda x: x < 10)
-    ... def foo(a, b):
-    ...     pass
-    ...
-    >>> foo(9, 11) #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    ValueError: Errors in 'foo'. One of '['a', 'b']' must validate.
-    >>> foo(9, 9)
-    >>> foo(11, 11)
-    >>> foo(11, 9) #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    ValueError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
     """
     def decorator(fn):
         allargs, fn_name = _get_args_and_name(fn)
@@ -141,19 +132,23 @@ def ensure_one_of(error_handler=None, exclusive=False, **rules):
         def wrapper(*args, **kwargs):
             pargs = list(allargs)[:len(args)]
             results = _check_args(rules, pargs, args, kwargs)
-            valid_count = len([valid for arg_name, arg_val, valid in results
-                                if valid])
-            fn_info = "Errors in '%s'. " % fn_name
-            if valid_count < 1:
-                error_msg = "One of '%s' must validate. Constraints: %s" % \
-                        (rules.keys(), rules)
-                _propogate_error(fn_info + error_msg, error_handler)
-            elif valid_count > 1 and exclusive:
-                error_msg = "Only one of '%s' must validate. Constraints: %s" % \
-                        (rules.keys(), rules)
-                _propogate_error(fn_info + error_msg, error_handler)
+            errors = _construct_errors(results, rules)
+            if errors:
+                valid_count = len(rules) - len(errors)
+                if valid_count < 1:
+                    errors['base'].append('%s: One of constraints must validate.' % fn_name)
+                    return _propogate_error(errors, error_handler)
+                elif valid_count > 1 and exclusive:
+                    errors['base'].append('%s: Only one of constraints should validate.' % fn_name)
+                    return _propogate_error(errors, error_handler)
+                else:
+                    return fn(*args, **kwargs)
             else:
-                return fn(*args, **kwargs)
+                if exclusive:
+                    errors['base'].append('%s: Only one of constraints should validate.' % fn_name)
+                    return _propogate_error(errors, error_handler)
+                else:
+                    return fn(*args, **kwargs)
         wrapper.__allargs__, wrapper.__fnname__ = allargs, fn_name
         return wrapper
     return decorator
@@ -162,13 +157,6 @@ def transform_args(**rules):
     """
     Transform the value of `arg_name`
     where `rules` is a collection of `arg_name=transformation`.
-
-    >>> @transform_args(a=lambda x: x*x)
-    ... def foo(a):
-    ...     print a
-    ...
-    >>> foo(2)
-    4
     """
     def decorator(fn):
         allargs, fn_name = _get_args_and_name(fn)
