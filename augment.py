@@ -48,7 +48,7 @@ def ensure_args(error_handler=None, **rules):
     >>> foo(9, '12') #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
-    TypeError: Errors in 'foo'. 'a = 9' violates constraint.
+    ValueError: Errors in 'foo'. 'a = 9' violates constraint.
     >>> foo(11, '12')
     >>> foo(11, '12', 11) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
@@ -57,11 +57,11 @@ def ensure_args(error_handler=None, **rules):
     >>> foo(11, 'ab', 11) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
-    TypeError: Errors in 'foo'. 'b = ab' violates constraint.
+    ValueError: Errors in 'foo'. 'b = ab' violates constraint.
     >>> foo(11, 'ab') #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
-    TypeError: Errors in 'foo'. 'b = ab' violates constraint.
+    ValueError: Errors in 'foo'. 'b = ab' violates constraint.
     """
     def decorator(fn):
         allargs, fn_name = _get_args_and_name(fn)
@@ -119,7 +119,7 @@ def ensure_one_of(error_handler=None, exclusive=False, **rules):
     >>> foo(9, 11) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
-    TypeError: Errors in 'foo'. One of '['a', 'b']' must validate.
+    ValueError: Errors in 'foo'. One of '['a', 'b']' must validate.
     >>> @ensure_one_of(exclusive=True, a=lambda x: x > 10, b=lambda x: x < 10)
     ... def foo(a, b):
     ...     pass
@@ -127,13 +127,13 @@ def ensure_one_of(error_handler=None, exclusive=False, **rules):
     >>> foo(9, 11) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
-    TypeError: Errors in 'foo'. One of '['a', 'b']' must validate.
+    ValueError: Errors in 'foo'. One of '['a', 'b']' must validate.
     >>> foo(9, 9)
     >>> foo(11, 11)
     >>> foo(11, 9) #doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
-    TypeError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
+    ValueError: Errors in 'foo'. Only one of '['a', 'b']' must validate.
     """
     def decorator(fn):
         allargs, fn_name = _get_args_and_name(fn)
