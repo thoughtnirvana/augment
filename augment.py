@@ -25,7 +25,7 @@ def _get_args_and_name(fn):
         fn_name = fn.__name__
     return allargs, fn_name
 
-def _propogate_error(errors, handler=None, exception_type=TypeError):
+def _propogate_error(errors, handler=None, exception_type=ValueError):
     """
     Passes the errors to the handler or raises an exception.
     """
