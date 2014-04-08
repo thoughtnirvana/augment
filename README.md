@@ -6,7 +6,7 @@
 
 #### Examples
 
-Some specific examples are list below. Tests contain more exmaples.
+Some specific examples are listed below. Tests contain more exmaples.
 
 
     class TestAugment(unittest.TestCase):
