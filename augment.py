@@ -34,7 +34,7 @@ def _get_args_and_name(fn):
     allargs, fn_name = getattr(fn, '__allargs__', None), \
             getattr(fn, '__fnname__', None)
     if not allargs:
-        code = fn.func_code
+        code = fn.__code__
         allargs = code.co_varnames[:code.co_argcount]
         fn_name = fn.__name__
     return allargs, fn_name
